@@ -57,21 +57,35 @@ export function getSpaceAt(position, map) {
   return map.spaces[position];
 }
 
-export function canBuyProperty(player, property) {
-  if (!property || property.type !== 'property') return false;
-  if (property.owner) return false;
-  if (player.money < property.price) return false;
+export function canBuyProperty(player, space) {
+  if (!space) return false;
+  // Can buy properties, railroads, and utilities
+  const buyableTypes = ['property', 'railroad', 'utility'];
+  if (!buyableTypes.includes(space.type)) return false;
+  if (space.owner) return false;
+  if (player.money < space.price) return false;
   return true;
 }
 
-export function buyProperty(player, property) {
-  if (!canBuyProperty(player, property)) {
+export function buyProperty(player, space) {
+  if (!canBuyProperty(player, space)) {
     throw new Error('Cannot buy this property');
   }
   
-  player.money -= property.price;
-  player.properties.push(property.id);
-  property.owner = player.id;
+  player.money -= space.price;
+  
+  // Store in appropriate array based on type
+  if (space.type === 'property') {
+    player.properties.push(space.id);
+  } else if (space.type === 'railroad') {
+    if (!player.railroads) player.railroads = [];
+    player.railroads.push(space.id);
+  } else if (space.type === 'utility') {
+    if (!player.utilities) player.utilities = [];
+    player.utilities.push(space.id);
+  }
+  
+  space.owner = player.id;
   
   return player;
 }

@@ -30,11 +30,17 @@ class GameRoom {
     this.turnPhase = 'roll';
     this.lastDiceRoll = [0, 0];
     this.createdAt = Date.now();
+    this.ownedProperties = new Map(); // spaceId -> playerId (tracks property ownership)
   }
 
   addPlayer(playerId, username, socketId) {
     if (this.players.length >= 8) {
       throw new Error('Room is full');
+    }
+
+    // If game already started, reject new players
+    if (this.status === 'playing') {
+      throw new Error('Game already started - spectator mode not yet implemented');
     }
 
     if (this.players.find(p => p.id === playerId)) {
@@ -91,6 +97,21 @@ class GameRoom {
     }
     this.status = 'playing';
     this.currentPlayerIndex = 0;
+  }
+
+  // Check if property is already owned
+  isPropertyOwned(spaceId) {
+    return this.ownedProperties.has(spaceId);
+  }
+
+  // Get property owner
+  getPropertyOwner(spaceId) {
+    return this.ownedProperties.get(spaceId);
+  }
+
+  // Set property owner
+  setPropertyOwner(spaceId, playerId) {
+    this.ownedProperties.set(spaceId, playerId);
   }
 
   toJSON() {

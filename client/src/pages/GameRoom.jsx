@@ -22,9 +22,25 @@ export default function GameRoom() {
   const [currentSpace, setCurrentSpace] = useState(null); // Show current landed space
   const [message, setMessage] = useState('');
 
-  const storedUser = sessionStorage.getItem('testUser');
-  const testUser = user || (storedUser ? JSON.parse(storedUser) : { id: 'test-' + Math.random(), username: 'TestPlayer' });
+  // Get or create unique test user for this session
+  const getTestUser = () => {
+    if (user) return user;
+    
+    const storedUser = sessionStorage.getItem('testUser');
+    if (storedUser) {
+      return JSON.parse(storedUser);
+    }
+    
+    // Create new unique test user
+    const newTestUser = {
+      id: 'test-' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36),
+      username: 'TestPlayer'
+    };
+    sessionStorage.setItem('testUser', JSON.stringify(newTestUser));
+    return newTestUser;
+  };
 
+  const testUser = getTestUser();
   const socket = getSocket();
 
   useEffect(() => {
@@ -44,7 +60,17 @@ export default function GameRoom() {
         if (data.currentPlayer) {
           setCurrentPlayer(data.currentPlayer);
         }
-        setMessage(`Joined room ${roomCode}`);
+        
+        // Restore full state on rejoin
+        if (data.isRejoin && data.roomStatus === 'playing') {
+          setMessage(`Game restored - ${data.players.find(p => p.id === data.currentPlayer)?.username}'s turn`);
+          // Restore dice if they exist
+          if (data.gameState?.lastDiceRoll && data.gameState.lastDiceRoll[0] > 0) {
+            setDiceRoll(data.gameState.lastDiceRoll);
+          }
+        } else {
+          setMessage(`Joined room ${roomCode}`);
+        }
       });
 
       socket.on('game-started', (data) => {
@@ -101,7 +127,22 @@ export default function GameRoom() {
 
       socket.on('special-space', (data) => {
         if (!mounted) return;
-        setMessage(`${data.player} landed on ${data.space.name}`);
+        
+        // Update players to reflect money changes
+        if (data.players) {
+          setPlayers(data.players);
+        }
+        
+        // Handle different special space types
+        if (data.space.type === 'tax') {
+          const taxAction = data.actions.find(a => a.type === 'pay_tax');
+          setMessage(`${data.player} paid $${taxAction.amount} in taxes! Click End Turn when ready.`);
+        } else if (data.space.type === 'gotojail') {
+          setMessage(`${data.player} went to jail!`);
+        } else {
+          setMessage(`${data.player} landed on ${data.space.name}`);
+        }
+        
         if (data.space) {
           setCurrentSpace(data.space);
         }

@@ -1,42 +1,9 @@
 // Game Logic - Dice, Movement, Property Management
 
-// Smart dice system - ensures fairness
-const diceHistory = new Map(); // playerId -> array of rolls
-
+// Pure random dice system
 export function rollDice(playerId) {
   const dice1 = Math.floor(Math.random() * 6) + 1;
   const dice2 = Math.floor(Math.random() * 6) + 1;
-  
-  // Track history for fairness
-  if (!diceHistory.has(playerId)) {
-    diceHistory.set(playerId, []);
-  }
-  
-  const history = diceHistory.get(playerId);
-  history.push(dice1 + dice2);
-  
-  // Keep last 20 rolls
-  if (history.length > 20) {
-    history.shift();
-  }
-  
-  // Calculate average
-  const avg = history.reduce((a, b) => a + b, 0) / history.length;
-  
-  // If player is unlucky (avg < 6.5 after 10+ rolls), boost them
-  if (history.length >= 10 && avg < 6.5) {
-    // 30% chance to reroll for better result
-    if (Math.random() < 0.3) {
-      const newDice1 = Math.floor(Math.random() * 6) + 1;
-      const newDice2 = Math.floor(Math.random() * 6) + 1;
-      const newTotal = newDice1 + newDice2;
-      
-      if (newTotal > dice1 + dice2) {
-        return [newDice1, newDice2];
-      }
-    }
-  }
-  
   return [dice1, dice2];
 }
 
@@ -62,7 +29,7 @@ export function canBuyProperty(player, space) {
   // Can buy properties, railroads, and utilities
   const buyableTypes = ['property', 'railroad', 'utility'];
   if (!buyableTypes.includes(space.type)) return false;
-  if (space.owner) return false;
+  if (!space.price) return false;
   if (player.money < space.price) return false;
   return true;
 }
@@ -76,6 +43,7 @@ export function buyProperty(player, space) {
   
   // Store in appropriate array based on type
   if (space.type === 'property') {
+    if (!player.properties) player.properties = [];
     player.properties.push(space.id);
   } else if (space.type === 'railroad') {
     if (!player.railroads) player.railroads = [];
@@ -84,8 +52,6 @@ export function buyProperty(player, space) {
     if (!player.utilities) player.utilities = [];
     player.utilities.push(space.id);
   }
-  
-  space.owner = player.id;
   
   return player;
 }
@@ -114,7 +80,7 @@ export function payRent(player, owner, amount) {
   return { player, owner, amount };
 }
 
-export function handleSpecialSpace(player, space) {
+export function handleSpecialSpace(player, space, autoDeduct = true) {
   const actions = [];
   
   switch (space.type) {
@@ -123,8 +89,11 @@ export function handleSpecialSpace(player, space) {
       break;
       
     case 'tax':
-      player.money -= space.amount;
-      actions.push({ type: 'pay_tax', amount: space.amount });
+      // Deduct tax immediately when landing
+      if (autoDeduct) {
+        player.money -= space.amount;
+      }
+      actions.push({ type: 'pay_tax', amount: space.amount, requiresConfirmation: true });
       break;
       
     case 'gotojail':
@@ -146,6 +115,16 @@ export function handleSpecialSpace(player, space) {
   }
   
   return actions;
+}
+
+// Pay tax (called explicitly)
+export function payTax(player, amount) {
+  if (player.money < amount) {
+    // TODO: Handle bankruptcy
+    amount = player.money;
+  }
+  player.money -= amount;
+  return player;
 }
 
 // Check if player owns all properties of a color group (monopoly)

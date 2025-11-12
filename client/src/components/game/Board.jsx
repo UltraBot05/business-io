@@ -10,6 +10,15 @@ export default function Board({ spaces, players, onSpaceClick }) {
     return 'transparent';
   };
 
+  const getSpaceOwner = (space) => {
+    if (!space.id) return null;
+    return players.find(p => 
+      p.properties?.includes(space.id) ||
+      p.railroads?.includes(space.id) ||
+      p.utilities?.includes(space.id)
+    );
+  };
+
   return (
     <div className="board">
       {/* Bottom row (0-10) */}
@@ -17,13 +26,23 @@ export default function Board({ spaces, players, onSpaceClick }) {
         {spaces.slice(0, 11).map(space => (
           <div 
             key={space.id}
-            className={`board-space space-${space.type}`}
+            className={`board-space space-${space.type} ${getSpaceOwner(space) ? 'owned' : ''}`}
             onClick={() => onSpaceClick(space)}
-            style={{ borderTopColor: getSpaceColor(space) }}
+            style={{ 
+              borderTopColor: getSpaceColor(space),
+              color: getSpaceColor(space) // For bookmark tag
+            }}
           >
             <div className="space-name">{space.name}</div>
             {space.price && (
               <div className="space-price">${space.price}</div>
+            )}
+            {getSpaceOwner(space) && (
+              <div 
+                className="ownership-marker"
+                style={{ backgroundColor: getSpaceOwner(space).color }}
+                title={`Owned by ${getSpaceOwner(space).username}`}
+              />
             )}
             <div className="space-players">
               {getPlayersOnSpace(space.id).map(player => (
@@ -48,13 +67,23 @@ export default function Board({ spaces, players, onSpaceClick }) {
           {spaces.slice(11, 20).reverse().map(space => (
             <div 
               key={space.id}
-              className={`board-space space-${space.type}`}
+              className={`board-space space-${space.type} ${getSpaceOwner(space) ? 'owned' : ''}`}
               onClick={() => onSpaceClick(space)}
-              style={{ borderRightColor: getSpaceColor(space) }}
+              style={{ 
+                borderRightColor: getSpaceColor(space),
+                color: getSpaceColor(space)
+              }}
             >
               <div className="space-name">{space.name}</div>
               {space.price && (
                 <div className="space-price">${space.price}</div>
+              )}
+              {getSpaceOwner(space) && (
+                <div 
+                  className="ownership-marker"
+                  style={{ backgroundColor: getSpaceOwner(space).color }}
+                  title={`Owned by ${getSpaceOwner(space).username}`}
+                />
               )}
               <div className="space-players">
                 {getPlayersOnSpace(space.id).map(player => (
@@ -85,13 +114,23 @@ export default function Board({ spaces, players, onSpaceClick }) {
           {spaces.slice(21, 30).map(space => (
             <div 
               key={space.id}
-              className={`board-space space-${space.type}`}
+              className={`board-space space-${space.type} ${getSpaceOwner(space) ? 'owned' : ''}`}
               onClick={() => onSpaceClick(space)}
-              style={{ borderLeftColor: getSpaceColor(space) }}
+              style={{ 
+                borderLeftColor: getSpaceColor(space),
+                color: getSpaceColor(space)
+              }}
             >
               <div className="space-name">{space.name}</div>
               {space.price && (
                 <div className="space-price">${space.price}</div>
+              )}
+              {getSpaceOwner(space) && (
+                <div 
+                  className="ownership-marker"
+                  style={{ backgroundColor: getSpaceOwner(space).color }}
+                  title={`Owned by ${getSpaceOwner(space).username}`}
+                />
               )}
               <div className="space-players">
                 {getPlayersOnSpace(space.id).map(player => (
@@ -115,13 +154,23 @@ export default function Board({ spaces, players, onSpaceClick }) {
         {spaces.slice(30, 40).reverse().map(space => (
           <div 
             key={space.id}
-            className={`board-space space-${space.type}`}
+            className={`board-space space-${space.type} ${getSpaceOwner(space) ? 'owned' : ''}`}
             onClick={() => onSpaceClick(space)}
-            style={{ borderBottomColor: getSpaceColor(space) }}
+            style={{ 
+              borderBottomColor: getSpaceColor(space),
+              color: getSpaceColor(space)
+            }}
           >
             <div className="space-name">{space.name}</div>
             {space.price && (
               <div className="space-price">${space.price}</div>
+            )}
+            {getSpaceOwner(space) && (
+              <div 
+                className="ownership-marker"
+                style={{ backgroundColor: getSpaceOwner(space).color }}
+                title={`Owned by ${getSpaceOwner(space).username}`}
+              />
             )}
             <div className="space-players">
               {getPlayersOnSpace(space.id).map(player => (

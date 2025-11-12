@@ -1,12 +1,14 @@
 .board {
-  width: min(700px, 85vh);
-  height: min(700px, 85vh);
-  background: #e8f4f8;
-  border: 3px solid #0f172a;
+  width: min(700px, 82vh);
+  height: min(700px, 82vh);
+  background: #1e293b;
+  border: 6px solid #0f172a;
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  border-radius: 4px;
+  position: relative;
+  overflow: visible;
 }
 
 .board-row {
@@ -36,6 +38,7 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0891b2 100%);
+  box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .board-logo {
@@ -69,53 +72,96 @@
 }
 
 .board-space {
-  width: 60px;
+  width: 58px;
   height: 90px;
   border: 2px solid #0f172a;
   background: white;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 5px;
+  justify-content: flex-start;
+  padding: 0;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .board-space:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
   z-index: 10;
 }
 
+/* Remove thick borders, we'll use colored rectangles instead */
 .board-bottom .board-space,
 .board-top .board-space {
-  border-top-width: 8px;
-  border-bottom-width: 8px;
+  border-width: 2px;
 }
 
 .board-left .board-space,
 .board-right .board-space {
-  border-left-width: 8px;
-  border-right-width: 8px;
+  border-width: 2px;
   width: 90px;
-  height: 60px;
+  height: 58px;
+  flex-direction: row;
+}
+
+
+
+/* Property color bar at top/side */
+.board-space::before {
+  content: '';
+  width: 100%;
+  height: 22px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.board-left .board-space::before,
+.board-right .board-space::before {
+  width: 22px;
+  height: 100%;
 }
 
 .space-name {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 600;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.15;
   color: #1e293b;
+  padding: 4px 3px 2px 3px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-left .space-name,
+.board-right .space-name {
+  writing-mode: horizontal-tb;
+  padding: 3px 4px;
 }
 
 .space-price {
   font-size: 0.7rem;
-  font-weight: 600;
-  color: #0891b2;
+  font-weight: 700;
+  color: white;
+  background: #0891b2;
+  width: 100%;
+  text-align: center;
+  padding: 3px 2px;
+  flex-shrink: 0;
+}
+
+.board-left .space-price,
+.board-right .space-price {
+  writing-mode: vertical-rl;
+  height: 100%;
+  width: auto;
+  padding: 3px 4px;
 }
 
 .space-players {
@@ -138,6 +184,38 @@
   font-weight: 700;
   color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+  0% {
+    transform: scale(0.5) translateY(-20px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Corner spaces - larger and more prominent */
+.space-go,
+.space-jail,
+.space-parking,
+.space-gotojail {
+  width: 90px !important;
+  height: 90px !important;
+  border-width: 2px !important;
+}
+
+.space-go::before,
+.space-jail::before,
+.space-parking::before,
+.space-gotojail::before {
+  display: none;
 }
 
 /* Space type styling */
@@ -147,7 +225,8 @@
 
 .space-go .space-name {
   color: white;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
 .space-jail {
@@ -156,7 +235,8 @@
 
 .space-jail .space-name {
   color: white;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .space-parking {
@@ -165,7 +245,8 @@
 
 .space-parking .space-name {
   color: white;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 800;
 }
 
 .space-gotojail {
@@ -174,18 +255,85 @@
 
 .space-gotojail .space-name {
   color: white;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.space-chance::before,
+.space-chest::before,
+.space-tax::before,
+.space-railroad::before,
+.space-utility::before {
+  display: none;
 }
 
 .space-chance,
 .space-chest {
   background: #f8fafc;
+  justify-content: center;
 }
 
 .space-tax,
 .space-railroad,
 .space-utility {
   background: #f1f5f9;
+  justify-content: center;
+}
+
+.space-railroad .space-price,
+.space-utility .space-price {
+  background: #334155;
+}
+
+/* Ownership markers - RichUp style colored rectangle in price area */
+.ownership-marker {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Bottom row - replace price background */
+.board-bottom .ownership-marker {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  width: 100%;
+}
+
+/* Top row - replace price background */
+.board-top .ownership-marker {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  width: 100%;
+}
+
+/* Left column - replace price background */
+.board-left .ownership-marker {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  height: 100%;
+  writing-mode: vertical-rl;
+}
+
+/* Right column - replace price background */
+.board-right .ownership-marker {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  height: 100%;
+  writing-mode: vertical-rl;
 }
 
 @media (max-width: 900px) {

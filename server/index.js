@@ -180,11 +180,12 @@ io.on('connection', (socket) => {
         return socket.emit('error', { message: 'Room not found' });
       }
 
-      // If user exists, update socketId; otherwise add
+      // If user exists, update socketId; otherwise try to add (will fail if game started)
       const existing = room.players.find(p => p.id === userId);
       if (existing) {
         existing.socketId = socket.id;
       } else {
+        // This will throw error if game already started
         room.addPlayer(userId, username, socket.id);
       }
 
@@ -193,14 +194,17 @@ io.on('connection', (socket) => {
 
       const map = getMap(room.mapId);
 
-      // Send full game state including current turn info
+      // Send COMPLETE game state including all properties, ownership, and turn info
       socket.emit('room-joined', {
         gameState: {
           ...room.toJSON(),
-          map
+          map,
+          ownedProperties: Array.from(room.ownedProperties.entries()) // Convert Map to array for JSON
         },
         players: room.players,
-        currentPlayer: room.getCurrentPlayer()?.id
+        currentPlayer: room.getCurrentPlayer()?.id,
+        isRejoin: true,
+        roomStatus: room.status
       });
 
       // Only notify others if this is a new player
@@ -211,7 +215,7 @@ io.on('connection', (socket) => {
         });
       }
 
-      console.log(`${username} ${existing ? 'rejoined' : 'joined'} room ${roomCode}`);
+      console.log(`${username} ${existing ? 'rejoined (restored state)' : 'joined'} room ${roomCode}`);
     } catch (err) {
       socket.emit('error', { message: err.message });
     }
@@ -322,12 +326,20 @@ io.on('connection', (socket) => {
         passedGo: moveResult.passedGo
       });
 
-      if (space.type !== 'property') {
+      // Handle special spaces (tax, jail, etc)
+      if (space.type !== 'property' && space.type !== 'railroad' && space.type !== 'utility') {
         const actions = handleSpecialSpace(player, space);
+        
+        // For tax spaces, deduct money immediately
+        if (space.type === 'tax') {
+          player.money -= space.amount;
+        }
+        
         io.to(roomCode).emit('special-space', {
           space,
           actions,
-          player: player.username
+          player: player.username,
+          players: room.players // Send updated player data
         });
       }
 
@@ -357,11 +369,19 @@ io.on('connection', (socket) => {
       const map = getMap(room.mapId);
       const space = getSpaceAt(player.position, map);
 
+      // Check if property is already owned in this room
+      if (room.isPropertyOwned(space.id)) {
+        return socket.emit('error', { message: 'Property already owned' });
+      }
+
       if (!canBuyProperty(player, space)) {
         return socket.emit('error', { message: 'Cannot buy this property' });
       }
 
       buyProperty(player, space);
+      
+      // Mark property as owned in room
+      room.setPropertyOwner(space.id, player.id);
 
       io.to(roomCode).emit('property-bought', {
         gameState: {

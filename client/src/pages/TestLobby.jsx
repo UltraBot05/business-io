@@ -13,8 +13,11 @@ export default function TestLobby() {
     setCreating(true);
     console.log('Creating room...');
 
-    // Test user (persisted for GameRoom)
-    const testUser = { id: 'test-' + Math.random().toString(36).slice(2, 9), username: 'TestPlayer' };
+    // Create unique test user with timestamp to ensure uniqueness
+    const testUser = { 
+      id: 'test-' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36), 
+      username: 'TestPlayer' 
+    };
     sessionStorage.setItem('testUser', JSON.stringify(testUser));
 
     const socket = getSocket();
@@ -79,9 +82,12 @@ export default function TestLobby() {
       alert('Please enter a room code');
       return;
     }
-    // store testUser if none
+    // Create unique test user if none exists
     if (!sessionStorage.getItem('testUser')) {
-      const t = { id: 'test-' + Math.random().toString(36).slice(2, 9), username: 'TestPlayer' };
+      const t = { 
+        id: 'test-' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36), 
+        username: 'TestPlayer' 
+      };
       sessionStorage.setItem('testUser', JSON.stringify(t));
     }
     navigate(`/game/${roomCode.toUpperCase()}`);

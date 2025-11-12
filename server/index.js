@@ -172,7 +172,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Rejoin handler (client reconnect case)
+  // Rejoin handler (client reconnect case or page refresh)
   socket.on('rejoin-room', ({ roomCode, userId, username }) => {
     try {
       const room = getRoom(roomCode);
@@ -193,20 +193,25 @@ io.on('connection', (socket) => {
 
       const map = getMap(room.mapId);
 
+      // Send full game state including current turn info
       socket.emit('room-joined', {
         gameState: {
           ...room.toJSON(),
           map
         },
-        players: room.players
-      });
-
-      socket.to(roomCode).emit('player-joined', {
         players: room.players,
-        username
+        currentPlayer: room.getCurrentPlayer()?.id
       });
 
-      console.log(`${username} rejoined room ${roomCode}`);
+      // Only notify others if this is a new player
+      if (!existing) {
+        socket.to(roomCode).emit('player-joined', {
+          players: room.players,
+          username
+        });
+      }
+
+      console.log(`${username} ${existing ? 'rejoined' : 'joined'} room ${roomCode}`);
     } catch (err) {
       socket.emit('error', { message: err.message });
     }

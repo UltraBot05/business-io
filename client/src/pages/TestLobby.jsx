@@ -1,6 +1,7 @@
+// client/src/pages/TestLobby.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { socket } from '../utils/socket';
+import { getSocket, ensureConnected } from '../utils/socket';
 import './TestLobby.css';
 
 export default function TestLobby() {
@@ -8,60 +9,80 @@ export default function TestLobby() {
   const [roomCode, setRoomCode] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
     setCreating(true);
     console.log('Creating room...');
-    
-    const testUser = { id: 'test-' + Math.random(), username: 'TestPlayer' };
-    
-    // Store user in sessionStorage for GameRoom to use
+
+    // Test user (persisted for GameRoom)
+    const testUser = { id: 'test-' + Math.random().toString(36).slice(2, 9), username: 'TestPlayer' };
     sessionStorage.setItem('testUser', JSON.stringify(testUser));
-    
-    // Connect socket if not connected
+
+    const socket = getSocket();
+    // Ensure socket connected (will create singleton and connect once)
     if (!socket.connected) {
-      console.log('Connecting socket...');
-      socket.connect();
-      
-      socket.once('connect', () => {
-        console.log('Socket connected:', socket.id);
-        createRoom(testUser);
+      ensureConnected();
+      await new Promise((res) => {
+        const t = setTimeout(() => {
+          socket.off('connect', onConnect);
+          console.warn('Socket connect timeout');
+          res();
+        }, 4000);
+        function onConnect() {
+          clearTimeout(t);
+          socket.off('connect', onConnect);
+          res();
+        }
+        socket.once('connect', onConnect);
       });
-    } else {
-      console.log('Socket already connected');
-      createRoom(testUser);
     }
-  };
 
-  const createRoom = (testUser) => {
-    // Create room
-    socket.emit('create-room', { 
-      userId: testUser.id, 
-      username: testUser.username, 
-      mapId: 'classic' 
-    });
-    console.log('Emitted create-room event');
-
-    socket.once('room-created', (data) => {
+    // Listen for room-created or failure (use once handlers)
+    const onCreated = (data) => {
       console.log('Room created:', data);
-      // Store room code and navigate without disconnecting
       sessionStorage.setItem('activeRoom', data.roomCode);
-      // Small delay to ensure socket is stable before navigation
+      // navigate only after ack and small safety delay
       setTimeout(() => {
+        setCreating(false);
         navigate(`/game/${data.roomCode}`);
-      }, 100);
+      }, 80);
+    };
+
+    const onError = (err) => {
+      console.error('Socket error on create-room:', err);
+      alert('Error creating room: ' + (err?.message || 'Unknown'));
+      setCreating(false);
+    };
+
+    socket.once('room-created', onCreated);
+    socket.once('error', onError);
+
+    // Emit create-room
+    socket.emit('create-room', {
+      userId: testUser.id,
+      username: testUser.username,
+      mapId: 'classic'
     });
 
-    socket.once('error', (error) => {
-      console.error('Socket error:', error);
-      alert('Error creating room: ' + error.message);
-      setCreating(false);
-    });
+    // safety timeout: remove listeners in case no response
+    setTimeout(() => {
+      socket.off('room-created', onCreated);
+      socket.off('error', onError);
+      if (creating) {
+        setCreating(false);
+        alert('Room creation timed out. Check server logs.');
+      }
+    }, 8000);
   };
 
   const handleJoinRoom = () => {
     if (!roomCode) {
       alert('Please enter a room code');
       return;
+    }
+    // store testUser if none
+    if (!sessionStorage.getItem('testUser')) {
+      const t = { id: 'test-' + Math.random().toString(36).slice(2, 9), username: 'TestPlayer' };
+      sessionStorage.setItem('testUser', JSON.stringify(t));
     }
     navigate(`/game/${roomCode.toUpperCase()}`);
   };
@@ -74,8 +95,8 @@ export default function TestLobby() {
         <p>Test Game Room</p>
 
         <div className="test-actions">
-          <button 
-            onClick={handleCreateRoom} 
+          <button
+            onClick={handleCreateRoom}
             disabled={creating}
             className="btn-test btn-create"
           >
@@ -93,7 +114,7 @@ export default function TestLobby() {
               maxLength={5}
               className="input-code"
             />
-            <button 
+            <button
               onClick={handleJoinRoom}
               className="btn-test btn-join"
             >
@@ -102,7 +123,7 @@ export default function TestLobby() {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={() => navigate('/')}
           className="btn-back"
         >

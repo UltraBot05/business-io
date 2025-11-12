@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { socket } from '../utils/socket';
+import { getSocket } from '../utils/socket';
 import './Lobby.css';
 
 export default function Lobby() {
@@ -238,6 +238,7 @@ function CreateGameModal({ onClose }) {
   const navigate = useNavigate();
 
   const handleCreate = () => {
+    const socket = getSocket();
     socket.emit('create-room', {
       userId: user.id,
       username: user.username,

@@ -57,6 +57,42 @@
   align-items: center;
 }
 
+.board-container {
+  position: relative;
+  width: fit-content;
+}
+
+.game-log-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.92);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  max-width: 400px;
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(8, 145, 178, 0.3);
+  z-index: 10;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
 .game-info {
   width: 300px;
   flex-shrink: 0;
@@ -68,9 +104,6 @@
   padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   margin-top: 20px;
-}
-
-.game-message {
   font-size: 0.95rem;
   color: #1e293b;
   line-height: 1.6;

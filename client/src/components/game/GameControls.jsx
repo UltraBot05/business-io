@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './GameControls.css';
 
 export default function GameControls({ 
@@ -10,6 +11,14 @@ export default function GameControls({
   diceRoll,
   isHost 
 }) {
+  const [rolling, setRolling] = useState(false);
+
+  const handleRollDice = () => {
+    setRolling(true);
+    onRollDice();
+    setTimeout(() => setRolling(false), 600);
+  };
+
   return (
     <div className="game-controls">
       {!gameStarted && isHost && (
@@ -21,14 +30,14 @@ export default function GameControls({
       {gameStarted && (
         <>
           <div className="dice-display">
-            <div className="dice">{diceRoll[0] || '?'}</div>
-            <div className="dice">{diceRoll[1] || '?'}</div>
+            <div className={`dice ${rolling ? 'rolling' : ''}`}>{diceRoll[0] || '?'}</div>
+            <div className={`dice ${rolling ? 'rolling' : ''}`}>{diceRoll[1] || '?'}</div>
           </div>
 
           <div className="control-buttons">
             <button 
               className="btn-control btn-roll" 
-              onClick={onRollDice}
+              onClick={handleRollDice}
               disabled={!isMyTurn}
             >
               🎲 Roll Dice

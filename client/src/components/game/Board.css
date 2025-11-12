@@ -1,6 +1,6 @@
 .board {
-  width: 700px;
-  height: 700px;
+  width: min(700px, 85vh);
+  height: min(700px, 85vh);
   background: #e8f4f8;
   border: 3px solid #0f172a;
   display: flex;

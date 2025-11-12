@@ -19,6 +19,7 @@ export default function GameRoom() {
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [diceRoll, setDiceRoll] = useState([0, 0]);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [currentSpace, setCurrentSpace] = useState(null); // Show current landed space
   const [message, setMessage] = useState('');
 
   const storedUser = sessionStorage.getItem('testUser');
@@ -73,12 +74,17 @@ export default function GameRoom() {
         if (!mounted) return;
         setGameState(data.gameState);
         setPlayers(data.players);
+        // Show the space the player landed on
+        if (data.space) {
+          setCurrentSpace(data.space);
+        }
       });
 
       socket.on('turn-changed', (data) => {
         if (!mounted) return;
         setCurrentPlayer(data.currentPlayer);
         setMessage(`${data.username}'s turn`);
+        setDiceRoll([0, 0]); // Reset dice for new turn
       });
 
       socket.on('property-bought', (data) => {
@@ -86,12 +92,15 @@ export default function GameRoom() {
         setGameState(data.gameState);
         setPlayers(data.players);
         setMessage(`${data.username} bought ${data.property.name}`);
+        setCurrentSpace(null); // Clear current space after buying
       });
 
       socket.on('special-space', (data) => {
         if (!mounted) return;
-        // Optional: display actions
         setMessage(`${data.player} landed on ${data.space.name}`);
+        if (data.space) {
+          setCurrentSpace(data.space);
+        }
       });
 
       socket.on('error', (data) => {
@@ -256,11 +265,18 @@ export default function GameRoom() {
         </div>
 
         <div className="game-info">
-          {selectedProperty && (
+          {(selectedProperty || currentSpace) && (
             <PropertyCard 
-              property={selectedProperty}
-              owner={players.find(p => p.properties?.includes(selectedProperty.id))}
-              onClose={() => setSelectedProperty(null)}
+              property={selectedProperty || currentSpace}
+              owner={players.find(p => 
+                p.properties?.includes((selectedProperty || currentSpace).id) ||
+                p.railroads?.includes((selectedProperty || currentSpace).id) ||
+                p.utilities?.includes((selectedProperty || currentSpace).id)
+              )}
+              onClose={() => {
+                setSelectedProperty(null);
+                setCurrentSpace(null);
+              }}
             />
           )}
         </div>

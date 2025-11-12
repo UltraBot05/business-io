@@ -56,6 +56,7 @@
 
 .player-info {
   flex: 1;
+  min-width: 0; /* Prevent flex item from expanding parent */
 }
 
 .player-name {
@@ -66,6 +67,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge-me {

@@ -1,9 +1,10 @@
 .game-controls {
   background: white;
   border-radius: 12px;
-  padding: 25px;
+  padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
+  min-width: 220px;
+  max-width: 280px;
 }
 
 .dice-display {
@@ -26,6 +27,18 @@
   font-weight: 800;
   color: #0f172a;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.1s;
+}
+
+.dice.rolling {
+  animation: diceRoll 0.6s ease-in-out;
+}
+
+@keyframes diceRoll {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(0.9); }
+  75% { transform: rotate(270deg) scale(1.1); }
 }
 
 .control-buttons {

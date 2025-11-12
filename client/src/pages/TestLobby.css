@@ -1,0 +1,133 @@
+.test-lobby {
+  height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0891b2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.test-lobby-content {
+  text-align: center;
+  color: white;
+  max-width: 500px;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.test-logo {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 20px;
+}
+
+.test-lobby-content h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 3rem;
+  margin: 0 0 10px 0;
+  text-transform: lowercase;
+  letter-spacing: 2px;
+}
+
+.test-lobby-content p {
+  font-size: 1.2rem;
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+
+.test-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.btn-test {
+  padding: 15px 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-create {
+  background: white;
+  color: #1e3a8a;
+}
+
+.btn-create:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+
+.btn-create:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.divider {
+  color: white;
+  opacity: 0.5;
+  font-weight: 600;
+}
+
+.join-section {
+  display: flex;
+  gap: 10px;
+}
+
+.input-code {
+  flex: 1;
+  padding: 15px;
+  font-size: 1.1rem;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.input-code::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.input-code:focus {
+  outline: none;
+  border-color: white;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-join {
+  background: #0891b2;
+  color: white;
+  padding: 15px 25px;
+}
+
+.btn-join:hover {
+  background: #0e7490;
+  transform: translateY(-2px);
+}
+
+.btn-back {
+  margin-top: 30px;
+  padding: 10px 20px;
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}

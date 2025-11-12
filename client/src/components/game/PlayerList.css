@@ -1,0 +1,100 @@
+.player-list {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.player-list h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #1e293b;
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.player-card.active {
+  border-color: #0891b2;
+  background: #f0f9ff;
+}
+
+.player-card.me {
+  background: #f0fdf4;
+  border-color: #10b981;
+}
+
+.player-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-me {
+  background: #10b981;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.player-money {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 2px;
+}
+
+.player-properties {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.turn-badge {
+  font-size: 1.5rem;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}

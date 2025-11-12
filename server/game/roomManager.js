@@ -1,7 +1,8 @@
-// Game Room Manager
-// Handles all active game rooms and their state
+// server/game/roomManager.js
+// Game Room Manager with scheduled delete (grace period)
 
 const rooms = new Map();
+const scheduledDeletes = new Map(); // roomCode -> timeoutId
 
 // Generate random 5-character room code
 function generateRoomCode() {
@@ -13,16 +14,9 @@ function generateRoomCode() {
   return code;
 }
 
-// Player colors for tokens
 const playerColors = [
-  '#ef4444', // red
-  '#3b82f6', // blue
-  '#10b981', // green
-  '#f59e0b', // yellow
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#f97316'  // orange
+  '#ef4444', '#3b82f6', '#10b981', '#f59e0b',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'
 ];
 
 class GameRoom {
@@ -30,10 +24,10 @@ class GameRoom {
     this.roomCode = roomCode;
     this.host = host;
     this.mapId = mapId;
-    this.status = 'waiting'; // waiting, playing, finished
+    this.status = 'waiting';
     this.players = [];
     this.currentPlayerIndex = 0;
-    this.turnPhase = 'roll'; // roll, buy, end
+    this.turnPhase = 'roll';
     this.lastDiceRoll = [0, 0];
     this.createdAt = Date.now();
   }
@@ -70,8 +64,6 @@ class GameRoom {
     const index = this.players.findIndex(p => p.id === playerId);
     if (index !== -1) {
       this.players.splice(index, 1);
-      
-      // If host left, assign new host
       if (this.host === playerId && this.players.length > 0) {
         this.host = this.players[0].id;
       }
@@ -87,6 +79,7 @@ class GameRoom {
   }
 
   nextTurn() {
+    if (this.players.length === 0) return;
     this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
     this.turnPhase = 'roll';
     this.lastDiceRoll = [0, 0];
@@ -115,7 +108,7 @@ class GameRoom {
   }
 }
 
-// Room management functions
+// Room functions
 export function createRoom(hostId, hostname, mapId) {
   let roomCode;
   do {
@@ -124,7 +117,10 @@ export function createRoom(hostId, hostname, mapId) {
 
   const room = new GameRoom(roomCode, hostId, mapId);
   rooms.set(roomCode, room);
-  
+
+  // Cancel any scheduled delete if present (just in case)
+  cancelScheduledDelete(roomCode);
+
   return room;
 }
 
@@ -132,8 +128,42 @@ export function getRoom(roomCode) {
   return rooms.get(roomCode);
 }
 
+// Hard delete immediately
 export function deleteRoom(roomCode) {
+  if (!rooms.has(roomCode)) return;
   rooms.delete(roomCode);
+  cancelScheduledDelete(roomCode);
+}
+
+// Schedule deletion after `delayMs` if still empty
+export function scheduleDelete(roomCode, delayMs = 10000) {
+  // If already scheduled, no-op
+  if (scheduledDeletes.has(roomCode)) return;
+
+  const timeoutId = setTimeout(() => {
+    const room = rooms.get(roomCode);
+    if (!room) {
+      scheduledDeletes.delete(roomCode);
+      return;
+    }
+    if (room.players.length === 0) {
+      rooms.delete(roomCode);
+      console.log(`Room ${roomCode} deleted after grace period`);
+    }
+    scheduledDeletes.delete(roomCode);
+  }, delayMs);
+
+  scheduledDeletes.set(roomCode, timeoutId);
+}
+
+// Cancel scheduled deletion (e.g., someone joined)
+export function cancelScheduledDelete(roomCode) {
+  const tid = scheduledDeletes.get(roomCode);
+  if (tid) {
+    clearTimeout(tid);
+    scheduledDeletes.delete(roomCode);
+    console.debug(`Canceled scheduled delete for room ${roomCode}`);
+  }
 }
 
 export function getRoomCount() {
@@ -143,14 +173,11 @@ export function getRoomCount() {
 export function cleanupEmptyRooms() {
   const now = Date.now();
   const oneHour = 60 * 60 * 1000;
-  
   for (const [code, room] of rooms.entries()) {
-    // Delete rooms with no players or older than 1 hour
     if (room.players.length === 0 || (now - room.createdAt > oneHour)) {
       rooms.delete(code);
     }
   }
 }
 
-// Run cleanup every 10 minutes
 setInterval(cleanupEmptyRooms, 10 * 60 * 1000);

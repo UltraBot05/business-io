@@ -1,3 +1,4 @@
+// server/index.js
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -9,7 +10,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import './config/passport.js';
-import { createRoom, getRoom, deleteRoom } from './game/roomManager.js';
+import { createRoom, getRoom, deleteRoom, scheduleDelete, cancelScheduledDelete } from './game/roomManager.js';
 import { rollDice, movePlayer, getSpaceAt, canBuyProperty, buyProperty, calculateRent, payRent, handleSpecialSpace } from './game/gameLogic.js';
 import { getMap } from './game/maps.js';
 
@@ -41,7 +42,7 @@ app.use(session({
     mongoUrl: process.env.MONGODB_URI
   }),
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production'
   }
@@ -51,7 +52,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Serve static files (avatars)
+// Serve static files
 app.use('/uploads', express.static('uploads'));
 
 // Routes
@@ -62,7 +63,46 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Socket.io connection
+// Socket.io connection handling with socket -> player mapping
+const socketToPlayer = new Map(); // socketId -> { roomCode, playerId }
+
+// Helper: register socket mapping after adding player to room
+function registerSocketPlayer(socketId, roomCode, playerId) {
+  socketToPlayer.set(socketId, { roomCode, playerId });
+  // Someone joined => cancel scheduled deletion for that room
+  cancelScheduledDelete(roomCode);
+}
+
+// Helper: unregister mapping and schedule deletion if room empty
+function handleSocketLeave(socketId, explicit = false) {
+  const mapping = socketToPlayer.get(socketId);
+  if (!mapping) return;
+  const { roomCode, playerId } = mapping;
+  const room = getRoom(roomCode);
+  if (!room) {
+    socketToPlayer.delete(socketId);
+    return;
+  }
+
+  // Remove player from room state
+  room.removePlayer(playerId);
+
+  // Remove mapping
+  socketToPlayer.delete(socketId);
+
+  if (room.players.length === 0) {
+    // schedule delete with grace period
+    scheduleDelete(roomCode, 10000); // 10 seconds
+    console.log(`Room ${roomCode} scheduled for deletion (empty)`);
+  } else {
+    // notify remaining players
+    io.to(roomCode).emit('player-left', {
+      players: room.players,
+      username: playerId // best effort - server may not have username easily here
+    });
+  }
+}
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -71,14 +111,18 @@ io.on('connection', (socket) => {
     try {
       const room = createRoom(userId, username, mapId || 'classic');
       const player = room.addPlayer(userId, username, socket.id);
-      
+
       socket.join(room.roomCode);
+
+      // Register mapping and cancel scheduled deletion if any
+      registerSocketPlayer(socket.id, room.roomCode, userId);
+
       socket.emit('room-created', {
         roomCode: room.roomCode,
         room: room.toJSON(),
         player
       });
-      
+
       console.log(`Room ${room.roomCode} created by ${username}`);
     } catch (error) {
       socket.emit('error', { message: error.message });
@@ -93,11 +137,21 @@ io.on('connection', (socket) => {
         return socket.emit('error', { message: 'Room not found' });
       }
 
-      const player = room.addPlayer(userId, username, socket.id);
+      // If playerId already present (e.g., reconnect attempt) and same id exists, treat specially
+      if (room.players.find(p => p.id === userId)) {
+        // Update socketId if rejoining after temporary disconnect
+        const existing = room.players.find(p => p.id === userId);
+        existing.socketId = socket.id;
+        registerSocketPlayer(socket.id, roomCode, userId);
+      } else {
+        const player = room.addPlayer(userId, username, socket.id);
+        registerSocketPlayer(socket.id, roomCode, userId);
+      }
+
       socket.join(roomCode);
 
       const map = getMap(room.mapId);
-      
+
       socket.emit('room-joined', {
         gameState: {
           ...room.toJSON(),
@@ -118,25 +172,70 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Leave room
-  socket.on('leave-room', ({ roomCode }) => {
-    const room = getRoom(roomCode);
-    if (room) {
-      const player = room.players.find(p => p.socketId === socket.id);
-      if (player) {
-        room.removePlayer(player.id);
-        socket.leave(roomCode);
-        
-        if (room.players.length === 0) {
-          deleteRoom(roomCode);
-          console.log(`Room ${roomCode} deleted (empty)`);
-        } else {
-          io.to(roomCode).emit('player-left', {
-            players: room.players,
-            username: player.username
-          });
-        }
+  // Rejoin handler (client reconnect case)
+  socket.on('rejoin-room', ({ roomCode, userId, username }) => {
+    try {
+      const room = getRoom(roomCode);
+      if (!room) {
+        return socket.emit('error', { message: 'Room not found' });
       }
+
+      // If user exists, update socketId; otherwise add
+      const existing = room.players.find(p => p.id === userId);
+      if (existing) {
+        existing.socketId = socket.id;
+      } else {
+        room.addPlayer(userId, username, socket.id);
+      }
+
+      registerSocketPlayer(socket.id, roomCode, userId);
+      socket.join(roomCode);
+
+      const map = getMap(room.mapId);
+
+      socket.emit('room-joined', {
+        gameState: {
+          ...room.toJSON(),
+          map
+        },
+        players: room.players
+      });
+
+      socket.to(roomCode).emit('player-joined', {
+        players: room.players,
+        username
+      });
+
+      console.log(`${username} rejoined room ${roomCode}`);
+    } catch (err) {
+      socket.emit('error', { message: err.message });
+    }
+  });
+
+  // Leave room (explicit)
+  socket.on('leave-room', ({ roomCode }) => {
+    try {
+      const mapping = socketToPlayer.get(socket.id);
+      if (!mapping) return;
+      const { playerId } = mapping;
+      const room = getRoom(roomCode);
+      if (!room) return;
+
+      room.removePlayer(playerId);
+      socket.leave(roomCode);
+      socketToPlayer.delete(socket.id);
+
+      if (room.players.length === 0) {
+        scheduleDelete(roomCode, 10000);
+        console.log(`Room ${roomCode} scheduled for deletion (explicit leave)`);
+      } else {
+        io.to(roomCode).emit('player-left', {
+          players: room.players,
+          username: playerId
+        });
+      }
+    } catch (err) {
+      socket.emit('error', { message: err.message });
     }
   });
 
@@ -149,6 +248,7 @@ io.on('connection', (socket) => {
       }
 
       const player = room.players.find(p => p.socketId === socket.id);
+      if (!player) return socket.emit('error', { message: 'Player not found in room' });
       if (player.id !== room.host) {
         return socket.emit('error', { message: 'Only host can start' });
       }
@@ -180,6 +280,8 @@ io.on('connection', (socket) => {
       }
 
       const player = room.players.find(p => p.socketId === socket.id);
+      if (!player) return socket.emit('error', { message: 'Player not found in room' });
+
       const currentPlayer = room.getCurrentPlayer();
 
       if (player.id !== currentPlayer.id) {
@@ -215,7 +317,6 @@ io.on('connection', (socket) => {
         passedGo: moveResult.passedGo
       });
 
-      // Handle special spaces
       if (space.type !== 'property') {
         const actions = handleSpecialSpace(player, space);
         io.to(roomCode).emit('special-space', {
@@ -240,6 +341,8 @@ io.on('connection', (socket) => {
       }
 
       const player = room.players.find(p => p.socketId === socket.id);
+      if (!player) return socket.emit('error', { message: 'Player not found in room' });
+
       const currentPlayer = room.getCurrentPlayer();
 
       if (player.id !== currentPlayer.id) {
@@ -254,7 +357,7 @@ io.on('connection', (socket) => {
       }
 
       buyProperty(player, space);
-      
+
       io.to(roomCode).emit('property-bought', {
         gameState: {
           ...room.toJSON(),
@@ -280,6 +383,8 @@ io.on('connection', (socket) => {
       }
 
       const player = room.players.find(p => p.socketId === socket.id);
+      if (!player) return socket.emit('error', { message: 'Player not found in room' });
+
       const currentPlayer = room.getCurrentPlayer();
 
       if (player.id !== currentPlayer.id) {
@@ -301,21 +406,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Disconnect handler: remove player mapping and schedule room deletion if empty
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-    
-    // Handle player leaving rooms on disconnect
-    // Find and remove player from any rooms
-    // (In production, you'd want to track socket-to-room mappings)
+    // Handle leaving
+    handleSocketLeave(socket.id, /*explicit=*/ false);
   });
 });
 
-// Connect to MongoDB
+// Connect to MongoDB and start server
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    
-    // Start server
+
     const PORT = process.env.PORT || 5000;
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

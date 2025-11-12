@@ -41,6 +41,9 @@ export default function GameRoom() {
         if (!mounted) return;
         setGameState(data.gameState);
         setPlayers(data.players);
+        if (data.currentPlayer) {
+          setCurrentPlayer(data.currentPlayer);
+        }
         setMessage(`Joined room ${roomCode}`);
       });
 
@@ -49,7 +52,8 @@ export default function GameRoom() {
         setGameState(data.gameState);
         setPlayers(data.players);
         setCurrentPlayer(data.currentPlayer);
-        setMessage('Game started! Roll the dice!');
+        const currentPlayerName = data.players.find(p => p.id === data.currentPlayer)?.username;
+        setMessage(`Game started! ${currentPlayerName}'s turn - Roll the dice!`);
       });
 
       socket.on('player-joined', (data) => {
